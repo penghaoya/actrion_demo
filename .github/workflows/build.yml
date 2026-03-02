@@ -26,38 +26,34 @@ permissions:
 
 jobs:
   build-archives:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: linux/amd64
+          - runs_on: ubuntu-24.04
             archive_suffix: linux-amd64
-          - platform: linux/arm64
+            image_tag: linux-amd64
+          - runs_on: ubuntu-24.04-arm
             archive_suffix: linux-arm64
+            image_tag: linux-arm64
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Build Docker image
+        run: |
+          docker build \
+            --file ./Dockerfile \
+            --tag ${IMAGE_NAME}:${{ matrix.image_tag }} \
+            .
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker archive
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: ${{ matrix.platform }}
-          tags: ${{ env.IMAGE_NAME }}:${{ matrix.archive_suffix }}
-          push: false
-          provenance: false
-          outputs: type=docker,dest=/tmp/${{ env.IMAGE_NAME }}-${{ matrix.archive_suffix }}.tar
-          cache-from: type=gha,scope=archive-${{ matrix.archive_suffix }}
-          cache-to: type=gha,mode=max,scope=archive-${{ matrix.archive_suffix }}
+      - name: Export Docker archive
+        run: |
+          docker save \
+            --output /tmp/${IMAGE_NAME}-${{ matrix.archive_suffix }}.tar \
+            ${IMAGE_NAME}:${{ matrix.image_tag }}
 
       - name: Compress Docker archive
         run: gzip -f -9 /tmp/${IMAGE_NAME}-${{ matrix.archive_suffix }}.tar
