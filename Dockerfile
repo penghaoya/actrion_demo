@@ -44,10 +44,10 @@ FROM python:3.10-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ENV APP_HOME=/workspace/GridPredict_OceanMeteo \
+ENV APP_HOME=/mnt/data2/DPS/WorkDir/EXE/GridPredict_OceanMeteo \
     VENV_PATH=/opt/venv \
-    GRIDPREDICT_CONFIG=/workspace/GridPredict_OceanMeteo/HSQX_Input.json \
-    GRIDPREDICT_SCRIPT=/workspace/GridPredict_OceanMeteo/HSQX.py \
+    GRIDPREDICT_CONFIG=/mnt/data2/DPS/WorkDir/EXE/GridPredict_OceanMeteo/HSQX_Input.json \
+    GRIDPREDICT_SCRIPT=/mnt/data2/DPS/WorkDir/EXE/GridPredict_OceanMeteo/HSQX.py \
     MPLCONFIGDIR=/tmp/matplotlib \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -65,16 +65,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR ${APP_HOME}
 
 RUN mkdir -p \
-    /workspace \
+    /mnt/data2/DPS/WorkDir/EXE/GridPredict_OceanMeteo \
     "${APP_HOME}" \
     "${APP_HOME}/result" \
-    /data/input \
     "${MPLCONFIGDIR}"
 
 COPY --from=builder ${VENV_PATH} ${VENV_PATH}
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/run-gridpredict
 
-VOLUME ["/workspace/GridPredict_OceanMeteo", "/data/input"]
+VOLUME ["/mnt"]
 
 ENTRYPOINT ["/usr/local/bin/run-gridpredict"]
 CMD []
