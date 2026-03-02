@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -eq 0 ]]; then
-  set -- "${APP_HOME}/HSQX_Input.json"
+script_path="${GRIDPREDICT_SCRIPT:-${APP_HOME}/HSQX.py}"
+config_path="${GRIDPREDICT_CONFIG:-${APP_HOME}/HSQX_Input.json}"
+
+if [[ ! -f "${script_path}" ]]; then
+  echo "Missing script: ${script_path}" >&2
+  echo "Mount your project directory into ${APP_HOME} (for example: -v \$(pwd)/GridPredict_OceanMeteo:${APP_HOME})" >&2
+  exit 1
 fi
 
-exec python "${APP_HOME}/HSQX.py" "$@"
+if [[ $# -eq 0 ]]; then
+  set -- "${config_path}"
+fi
+
+exec python "${script_path}" "$@"

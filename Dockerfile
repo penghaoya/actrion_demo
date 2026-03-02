@@ -43,8 +43,10 @@ FROM python:3.10-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ENV APP_HOME=/opt/GridPredict_OceanMeteo \
+ENV APP_HOME=/workspace/GridPredict_OceanMeteo \
     VENV_PATH=/opt/venv \
+    GRIDPREDICT_CONFIG=/workspace/GridPredict_OceanMeteo/HSQX_Input.json \
+    GRIDPREDICT_SCRIPT=/workspace/GridPredict_OceanMeteo/HSQX.py \
     MPLCONFIGDIR=/tmp/matplotlib \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -61,17 +63,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR ${APP_HOME}
 
 RUN mkdir -p \
-    "${APP_HOME}/model" \
-    "${APP_HOME}/output" \
-    "${APP_HOME}/result" \
+    /workspace \
+    "${APP_HOME}" \
     /data/input \
     "${MPLCONFIGDIR}"
 
 COPY --from=builder ${VENV_PATH} ${VENV_PATH}
-
-COPY GridPredict_OceanMeteo/HSQX.py ${APP_HOME}/HSQX.py
-COPY GridPredict_OceanMeteo/HSQX_Input.json ${APP_HOME}/HSQX_Input.json
-COPY GridPredict_OceanMeteo/model/RF_Model.joblib ${APP_HOME}/model/RF_Model.joblib
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/run-gridpredict
 
 ENTRYPOINT ["/usr/local/bin/run-gridpredict"]
