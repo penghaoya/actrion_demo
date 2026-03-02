@@ -1,97 +1,91 @@
-name: Build and Release Docker Image
+name: Build And Release Docker Archives
 
 on:
   push:
     branches: [ main, master ]
-    tags: [ 'v*' ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ main, master ]
+    paths:
+      - ".github/workflows/build.yml"
+      - ".dockerignore"
+      - "Dockerfile"
+      - "docker-entrypoint.sh"
+      - "GridPredict_OceanMeteo/**"
+  workflow_dispatch:
 
 concurrency:
-  group: docker-${{ github.workflow }}-${{ github.ref }}
+  group: docker-archives-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: my-nginx
+  IMAGE_NAME: gridpredict-oceanmeteo
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  build-archives:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
-          - linux/arm/v7
+        include:
+          - platform: linux/amd64
+            archive_suffix: linux-amd64
+          - platform: linux/arm64
+            archive_suffix: linux-arm64
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Convert platform name for filename
-      id: platform
-      run: |
-        PLATFORM_NAME=$(echo "${{ matrix.platform }}" | sed 's#/#-#g')
-        echo "name=$PLATFORM_NAME" >> "$GITHUB_OUTPUT"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Build Docker archive
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          tags: ${{ env.IMAGE_NAME }}:${{ matrix.archive_suffix }}
+          push: false
+          provenance: false
+          outputs: type=docker,dest=/tmp/${{ env.IMAGE_NAME }}-${{ matrix.archive_suffix }}.tar
+          cache-from: type=gha,scope=archive-${{ matrix.archive_suffix }}
+          cache-to: type=gha,mode=max,scope=archive-${{ matrix.archive_suffix }}
 
-    - name: Build Docker image for single platform
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: ${{ matrix.platform }}
-        push: false
-        outputs: type=docker,dest=/tmp/image.tar
-        cache-from: type=gha,scope=build-${{ steps.platform.outputs.name }}
-        cache-to: type=gha,mode=max,scope=build-${{ steps.platform.outputs.name }}
+      - name: Compress Docker archive
+        run: gzip -f -9 /tmp/${IMAGE_NAME}-${{ matrix.archive_suffix }}.tar
 
-    - name: Rename and compress image
-      run: |
-        cd /tmp
-        mv image.tar ${IMAGE_NAME}-${{ steps.platform.outputs.name }}.tar
-        gzip -v ${IMAGE_NAME}-${{ steps.platform.outputs.name }}.tar
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-image-${{ steps.platform.outputs.name }}
-        path: /tmp/${{ env.IMAGE_NAME }}-${{ steps.platform.outputs.name }}.tar.gz
-        compression-level: 0
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-archive-${{ matrix.archive_suffix }}
+          path: /tmp/${{ env.IMAGE_NAME }}-${{ matrix.archive_suffix }}.tar.gz
+          compression-level: 0
 
   release:
-    needs: build
+    needs: build-archives
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Download built archives
+        uses: actions/download-artifact@v4
+        with:
+          pattern: docker-archive-*
+          path: ./release-assets
+          merge-multiple: true
 
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: docker-image-*
-        path: ./docker-images
-        merge-multiple: true
-
-    - name: List artifacts
-      run: ls -lh docker-images/
-
-    - name: Create Release with artifacts
-      uses: ncipollo/release-action@v1
-      with:
-        artifacts: "docker-images/${{ env.IMAGE_NAME }}-*.tar.gz"
-        bodyFile: "RELEASE_NOTES.md"
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./release-assets/*.tar.gz
+          generate_release_notes: true
