@@ -6,6 +6,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV VENV_PATH=/opt/venv \
     PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     SETUPTOOLS_USE_DISTUTILS=stdlib \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -48,6 +49,7 @@ ENV APP_HOME=/workspace/GridPredict_OceanMeteo \
     GRIDPREDICT_CONFIG=/workspace/GridPredict_OceanMeteo/HSQX_Input.json \
     GRIDPREDICT_SCRIPT=/workspace/GridPredict_OceanMeteo/HSQX.py \
     MPLCONFIGDIR=/tmp/matplotlib \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}"
@@ -65,11 +67,14 @@ WORKDIR ${APP_HOME}
 RUN mkdir -p \
     /workspace \
     "${APP_HOME}" \
+    "${APP_HOME}/result" \
     /data/input \
     "${MPLCONFIGDIR}"
 
 COPY --from=builder ${VENV_PATH} ${VENV_PATH}
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/run-gridpredict
+
+VOLUME ["/workspace/GridPredict_OceanMeteo", "/data/input"]
 
 ENTRYPOINT ["/usr/local/bin/run-gridpredict"]
 CMD []

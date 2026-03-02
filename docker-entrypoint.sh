@@ -11,6 +11,11 @@ if [[ ! -f "${script_path}" ]]; then
 fi
 
 if [[ $# -eq 0 ]]; then
+  if [[ ! -f "${config_path}" ]]; then
+    echo "Missing config: ${config_path}" >&2
+    echo "Mount your project directory into ${APP_HOME} or pass a config path explicitly." >&2
+    exit 1
+  fi
   set -- "${config_path}"
 fi
 
