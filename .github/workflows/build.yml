@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: gridpredict-oceanmeteo
+  IMAGE_NAME: post_wrfout
 
 permissions:
   contents: read
