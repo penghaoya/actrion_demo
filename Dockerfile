@@ -50,10 +50,8 @@ FROM python:3.10-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ENV APP_HOME=/mnt/data2/DPS/WorkDir/EXE/Fuse_Atmospheric_Observation \
+ENV APP_HOME=/mnt/data2/DPS/WorkDir/EXE \
     VENV_PATH=/opt/venv \
-    GRIDPREDICT_CONFIG=/mnt/data2/DPS/WorkDir/EXE/Fuse_Atmospheric_Observation/DQ_Input.json \
-    GRIDPREDICT_SCRIPT=/mnt/data2/DPS/WorkDir/EXE/Fuse_Atmospheric_Observation/dqrh_main.py \
     MPLCONFIGDIR=/tmp/matplotlib \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -72,16 +70,29 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR ${APP_HOME}
 
 RUN mkdir -p \
+    /opt/python-3.10.13/bin \
+    /mnt/data2/DPS/WorkDir/EXE \
     /mnt/data2/DPS/WorkDir/EXE/Fuse_Atmospheric_Observation \
+    /mnt/data2/DPS/WorkDir/EXE/GridPredict_OceanMeteo \
     "${APP_HOME}" \
-    "${APP_HOME}/log" \
-    "${APP_HOME}/output" \
+    /mnt/data2/DPS/WorkDir/EXE/Fuse_Atmospheric_Observation/log \
+    /mnt/data2/DPS/WorkDir/EXE/Fuse_Atmospheric_Observation/output \
+    /mnt/data2/DPS/WorkDir/EXE/GridPredict_OceanMeteo/result \
     "${MPLCONFIGDIR}"
 
 COPY --from=builder ${VENV_PATH} ${VENV_PATH}
-COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/run-gridpredict
+
+RUN printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exec /opt/venv/bin/python "$@"' \
+    > /opt/python-3.10.13/bin/python \
+    && chmod 755 /opt/python-3.10.13/bin/python \
+    && printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exec /opt/venv/bin/pip "$@"' \
+    > /opt/python-3.10.13/bin/pip \
+    && chmod 755 /opt/python-3.10.13/bin/pip
 
 VOLUME ["/mnt"]
 
-ENTRYPOINT ["/usr/local/bin/run-gridpredict"]
-CMD []
+CMD ["bash"]
